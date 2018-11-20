@@ -1,0 +1,21 @@
+version: '3'  # version of compose format
+
+services:
+  cst:
+    # env_file:
+    #   - ./cst.env
+    build: ./cst
+    volumes:
+      - ./cst:/cst
+    ports:
+      - 8080:8080
+    links:
+      - elasticmq
+    env_file: ./cst.env
+  elasticmq:
+    image: graze/sqs-local
+    volumes:
+      - ./sqs/queue.conf:/elasticmq.conf
+    ports:
+      - 9324:9324
+      - 9325:9325
