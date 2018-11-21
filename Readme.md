@@ -4,6 +4,10 @@
 
 `cd cst && ./manage.py test`
 
+## building
+
+`docker-compose build` this will create python app and elasticmq and link them.
+
 
 ## running
 
