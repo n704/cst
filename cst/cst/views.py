@@ -17,6 +17,10 @@ class SumView(View):
         import json
         query = request.GET.get('query')
         description = request.GET.get('description')
+        if not query:
+            return JsonResponse({ "error": "No query"}, status=400)
+        if not description:
+            return JsonResponse({ "error": "No description"}, status=400)
         storyPoints = StoryPointsCalculator(query)
         try:
             totalPoints = storyPoints.get_score()
@@ -76,7 +80,7 @@ class JiraServer(object):
             JIRA_URL,
             query)
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
         except ConnectionError as e:
             raise StoryPointsCalculatorError("Connect make call to JIRA server")
         return self.get_json_response(response)
@@ -96,7 +100,10 @@ class StoryPointsCalculator(object):
         @args: jira_response json response from jira
         @returns: totalPoints integer
         """
-        return sum([x["fields"]["storyPoints"] for x in jira_response])
+        try:
+            return sum([x["fields"]["storyPoints"] for x in jira_response])
+        except KeyError as e:
+            raise NoDataError("Invalid key")
 
     def get_score(self):
         """
@@ -118,15 +125,19 @@ class SQS(object):
         QUEUE_URL = os.environ.get('QUEUE_URL')
         QUEUE_PORT = os.environ.get('QUEUE_PORT')
         QUEUE_NAME = os.environ.get('QUEUE_NAME')
+        QUEUE_AWS_ACCESS_KEY = os.environ.get('QUEUE_AWS_ACCESS_KEY')
+        QUEUE_AWS_KEY = os.environ.get('QUEUE_AWS_KEY')
+        QUEUE_REGION = os.environ.get('QUEUE_REGION')
+
         client = boto3.resource('sqs',
             endpoint_url='http://{0}:{1}/'.format(QUEUE_URL, QUEUE_PORT),
-            region_name='elasticmq',
-            aws_secret_access_key='x',
-            aws_access_key_id='x',
+            region_name=QUEUE_REGION,
+            aws_secret_access_key=QUEUE_AWS_ACCESS_KEY,
+            aws_access_key_id=QUEUE_AWS_KEY,
             use_ssl=False)
         try:
             self.queue = client.get_queue_by_name(QueueName=QUEUE_NAME)
-        except EndpointConnectionError as e:
+        except (EndpointConnectionError, KeyError) as e:
             raise SQSError("Cannot connect to SQS")
 
 
